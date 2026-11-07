@@ -1,0 +1,1 @@
+{"description":"Otari Guard - a spend and safety guard for LLM calls through the Otari gateway. Enforces per-call caps, daily caps, per-user budgets, allowlists and confirm thresholds.","engines":{"node":">=18"},"license":"MIT","name":"otari-guard","scripts":{"start":"node server.js","test":"node --test"},"version":"0.1.0"}
