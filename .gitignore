@@ -1,0 +1,7 @@
+# Otari Guard - secrets and local state
+.env
+.env.*
+!.env.example
+node_modules/
+.vercel/
+*.log

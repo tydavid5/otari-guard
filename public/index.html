@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otari Guard</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #e8eaf0; color: #1a1d29; }
+  .window { max-width: 1180px; margin: 24px auto; background: #fff; border: 1px solid #c9cdd8; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(20, 25, 50, 0.18); }
+  .titlebar { background: #232946; color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .titlebar h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  .titlebar .sub { font-size: 12px; color: #b9bed6; margin-left: 4px; }
+  .mode-badge { margin-left: auto; font-size: 12px; font-weight: 650; padding: 4px 10px; border-radius: 999px; background: #f2b33d; color: #232946; }
+  .mode-badge.live { background: #28c840; color: #fff; }
+  .banner { display: none; background: #fff4d6; color: #6b4e00; border-bottom: 1px solid #f0d48a; padding: 9px 16px; font-size: 14px; font-weight: 600; }
+  .banner.show { display: block; }
+  .banner.live-note { background: #e6f7ea; color: #14532d; border-bottom-color: #b7e4c7; }
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 0; }
+  .panel { padding: 16px 18px; border-bottom: 1px solid #e3e6ee; }
+  .left { border-right: 1px solid #e3e6ee; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a6076; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; margin: 10px 0 4px; color: #333a4d; }
+  input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #c9cdd8; border-radius: 6px; background: #fff; color: #1a1d29; }
+  textarea { resize: vertical; min-height: 56px; font-family: inherit; }
+  .hint { font-size: 12px; color: #6b7186; margin-top: 3px; }
+  button { cursor: pointer; font-size: 14px; font-weight: 650; border: 0; border-radius: 6px; padding: 9px 16px; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:disabled { background: #9db8f0; cursor: default; }
+  .btn-secondary { background: #eef1f6; color: #232946; }
+  .btn-confirm { background: #2e9e5b; color: #fff; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .meter { margin: 12px 0; }
+  .meter .bar { height: 10px; background: #eef1f6; border-radius: 999px; overflow: hidden; }
+  .meter .fill { height: 100%; background: #2563eb; width: 0%; }
+  .meter .fill.over { background: #d64545; }
+  .meter .nums { font-size: 13px; display: flex; justify-content: space-between; margin-top: 4px; }
+  .meter .nums b { font-variant-numeric: tabular-nums; }
+  .user-row { font-size: 13px; padding: 6px 0; border-bottom: 1px dashed #e3e6ee; display: flex; justify-content: space-between; }
+  .user-row:last-child { border-bottom: 0; }
+  .reply { margin-top: 14px; background: #f7f8fb; border: 1px solid #e3e6ee; border-radius: 8px; padding: 12px 14px; min-height: 90px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+  .reply .meta { font-size: 12px; color: #5a6076; margin-top: 10px; border-top: 1px solid #e3e6ee; padding-top: 8px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-right: 6px; }
+  .tag.sim { background: #fff4d6; color: #6b4e00; }
+  .tag.live { background: #e6f7ea; color: #14532d; }
+  .tag.fb { background: #e3ecff; color: #1d4ed8; }
+  .confirm-box { display: none; margin-top: 12px; background: #fff8e1; border: 1px solid #f0d48a; border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+  .confirm-box.show { display: block; }
+  .error-box { display: none; margin-top: 12px; background: #fdecea; border: 1px solid #f3b8b3; border-radius: 8px; padding: 12px 14px; font-size: 14px; color: #7a1f1a; }
+  .error-box.show { display: block; }
+  .full { grid-column: 1 / -1; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #5a6076; font-weight: 650; padding: 6px 8px; border-bottom: 2px solid #e3e6ee; white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid #eef1f6; vertical-align: top; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  th.num { text-align: right; }
+  .outcome { font-weight: 650; }
+  .outcome.allowed { color: #2e7d32; }
+  .outcome.blocked { color: #c62828; }
+  .outcome.needs-confirmation { color: #8a6d00; }
+  .outcome.fallback { color: #1d4ed8; }
+  .empty { color: #6b7186; font-size: 13px; padding: 8px 0; }
+  .footer { padding: 12px 18px; font-size: 12px; color: #6b7186; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } .left { border-right: 0; border-bottom: 1px solid #e3e6ee; } }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+    <h1>Otari Guard</h1>
+    <span class="sub">Spend and safety policy for LLM calls through Otari</span>
+    <span class="mode-badge" id="modeBadge">Demo mode</span>
+  </div>
+  <div class="banner" id="demoBanner">Demo mode, simulated responses, no live Otari calls</div>
+  <div class="banner live-note" id="liveBanner">Live mode: calls go to the Otari gateway and spend real account balance.</div>
+
+  <div class="grid">
+    <div class="left">
+      <div class="panel">
+        <h2>Spending policy</h2>
+        <label for="perCallCap">Per-call cap (USD)</label>
+        <input type="number" id="perCallCap" step="0.001" min="0">
+        <div class="hint">Block any single call whose estimated cost is above this.</div>
+
+        <label for="dailyCap">Daily cap (USD)</label>
+        <input type="number" id="dailyCap" step="0.01" min="0">
+        <div class="hint">Block calls that would take today past this total.</div>
+
+        <label for="confirmAbove">Confirm above (USD)</label>
+        <input type="number" id="confirmAbove" step="0.001" min="0">
+        <div class="hint">Calls estimated above this wait for your confirmation.</div>
+
+        <label for="allowlist">Allowlist (comma separated model ids)</label>
+        <input type="text" id="allowlist">
+        <div class="hint">Only these models may be called. Empty means no restriction.</div>
+
+        <label for="budgets">Per-user budgets (one per line, user: amount)</label>
+        <textarea id="budgets" placeholder="alice: 0.10&#10;agent-1: 0.50"></textarea>
+        <div class="hint">A user with no budget listed has no per-user limit.</div>
+
+        <div class="row">
+          <button class="btn-primary" id="applyPolicy">Apply policy</button>
+          <button class="btn-secondary" id="resetPolicy">Reset</button>
+        </div>
+        <div class="hint" id="policyNote"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Budgets today</h2>
+        <div class="meter">
+          <div class="nums"><span>Spent today</span><span><b id="spentToday">$0.00</b> of <b id="dailyCapLabel">$1.00</b></span></div>
+          <div class="bar"><div class="fill" id="dailyFill"></div></div>
+        </div>
+        <div id="userBudgets"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Playground</h2>
+        <div class="row" style="margin-top:0">
+          <div style="flex:1">
+            <label for="user">User</label>
+            <select id="user">
+              <option value="alice">alice</option>
+              <option value="bob">bob</option>
+              <option value="agent-1">agent-1</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label for="role">Role</label>
+            <select id="role">
+              <option value="triage">Triage, short replies</option>
+              <option value="code">Code and complex work</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label for="model">Model</label>
+            <select id="model"></select>
+          </div>
+        </div>
+
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" rows="3" placeholder="Ask something, for example: explain what a runaway loop is in one sentence"></textarea>
+
+        <div class="row">
+          <button class="btn-primary" id="runBtn">Run through the guard</button>
+        </div>
+
+        <div class="confirm-box" id="confirmBox">
+          <div id="confirmText"></div>
+          <div class="row">
+            <button class="btn-confirm" id="confirmYes">Confirm and run</button>
+            <button class="btn-secondary" id="confirmNo">Cancel</button>
+          </div>
+        </div>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <div class="reply" id="reply">No call yet. Type a prompt and run it: the guard checks the policy first, and only then calls the model.</div>
+      </div>
+    </div>
+
+    <div class="panel full">
+      <h2>Ledger, every call including blocked ones</h2>
+      <div id="ledgerWrap"><div class="empty">No calls yet.</div></div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer">Otari Guard talks to the Otari gateway at api.otari.ai. Costs shown are estimates from the gateway usage block; the gateway bills the real amount.</div>
+</div>
+
+<script>
+"use strict";
+
+const DEFAULT_MODELS = ["deepseek/deepseek-v4.1-flash", "deepseek/deepseek-v4-pro-0813", "openai:gpt-5"];
+const USERS = ["alice", "bob", "agent-1"];
+
+function defaultPolicy(models) {
+  return {
+    perCallCapUsd: 0.05,
+    dailyCapUsd: 1.0,
+    confirmAboveUsd: 0.02,
+    allowlist: (models || DEFAULT_MODELS).slice(),
+    perUserBudgets: {},
+  };
+}
+
+const app = {
+  mode: "demo",
+  serverMode: false,
+  health: null,
+  models: DEFAULT_MODELS.slice(),
+  policy: defaultPolicy(DEFAULT_MODELS),
+  spent: { day: todayStr(), spentTotalUsd: 0, spentByUser: {} },
+  ledger: [],
+  pending: null,
+};
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function $(id) { return document.getElementById(id); }
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function fmtUsd(v) {
+  if (v === null || v === undefined) return "unknown";
+  if (v === 0) return "$0.00";
+  if (Math.abs(v) < 0.0001) return "$" + v.toFixed(6);
+  return "$" + v.toFixed(4);
+}
+
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleTimeString(); } catch (e) { return iso; }
+}
+
+async function fetchJson(url, options) {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch (e) { data = null; }
+  if (!res.ok) {
+    const err = new Error((data && data.error) || ("Request failed: " + res.status));
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function loadLocal(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) { return fallback; }
+}
+
+function saveLocal(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage full or blocked */ }
+}
+
+function renderMode() {
+  const badge = $("modeBadge");
+  if (app.mode === "live") {
+    badge.textContent = "Live mode";
+    badge.classList.add("live");
+    $("demoBanner").classList.remove("show");
+    $("liveBanner").classList.add("show");
+  } else {
+    badge.textContent = "Demo mode";
+    badge.classList.remove("live");
+    $("demoBanner").classList.add("show");
+    $("liveBanner").classList.remove("show");
+  }
+  $("footer").textContent = app.mode === "live"
+    ? "Live mode: calls go to the Otari gateway and spend real account balance. Costs shown are estimates from the gateway usage block."
+    : "Demo mode: replies are simulated and no live Otari calls are made. Costs shown are estimates from the simulated usage block.";
+}
+
+function renderPolicyForm() {
+  $("perCallCap").value = app.policy.perCallCapUsd;
+  $("dailyCap").value = app.policy.dailyCapUsd;
+  $("confirmAbove").value = app.policy.confirmAboveUsd;
+  $("allowlist").value = app.policy.allowlist.join(", ");
+  const lines = Object.entries(app.policy.perUserBudgets).map(function (kv) {
+    return kv[0] + ": " + kv[1];
+  });
+  $("budgets").value = lines.join("\n");
+  $("policyNote").textContent = app.serverMode
+    ? "Policy is stored on the server."
+    : "Policy is stored in this browser only (hosted demo).";
+}
+
+function renderModelSelect() {
+  const sel = $("model");
+  const current = sel.value;
+  sel.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = "";
+  auto.textContent = "Auto (by role)";
+  sel.appendChild(auto);
+  app.models.forEach(function (m) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  if (current && app.models.indexOf(current) !== -1) sel.value = current;
+}
+
+function renderMeters() {
+  const spent = app.spent.spentTotalUsd || 0;
+  const cap = app.policy.dailyCapUsd;
+  $("spentToday").textContent = fmtUsd(spent);
+  $("dailyCapLabel").textContent = fmtUsd(cap);
+  const pct = cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
+  const fill = $("dailyFill");
+  fill.style.width = pct + "%";
+  fill.classList.toggle("over", spent > cap);
+  const wrap = $("userBudgets");
+  wrap.innerHTML = "";
+  USERS.forEach(function (user) {
+    const userSpent = (app.spent.spentByUser && app.spent.spentByUser[user]) || 0;
+    const budget = app.policy.perUserBudgets[user];
+    const row = document.createElement("div");
+    row.className = "user-row";
+    const left = document.createElement("span");
+    left.textContent = user;
+    const right = document.createElement("span");
+    right.textContent = fmtUsd(userSpent) + (budget !== undefined ? " of " + fmtUsd(budget) : " (no budget set)");
+    row.appendChild(left);
+    row.appendChild(right);
+    wrap.appendChild(row);
+  });
+}
+
+function outcomeClass(outcome) {
+  if (outcome === "allowed") return "allowed";
+  if (outcome === "blocked") return "blocked";
+  if (outcome === "needs-confirmation") return "needs-confirmation";
+  if (outcome === "fallback used") return "fallback";
+  return "";
+}
+
+function renderLedger() {
+  const wrap = $("ledgerWrap");
+  if (!app.ledger.length) {
+    wrap.innerHTML = '<div class="empty">No calls yet.</div>';
+    return;
+  }
+  const rows = app.ledger.slice(-50).reverse().map(function (e) {
+    return "<tr>"
+      + "<td>" + escapeHtml(fmtTime(e.at)) + "</td>"
+      + "<td>" + escapeHtml(e.user) + "</td>"
+      + "<td>" + escapeHtml(e.role || "") + "</td>"
+      + "<td>" + escapeHtml(e.modelUsed || e.modelRequested || "") + "</td>"
+      + "<td class=\"num\">" + (e.promptTokens === null ? "-" : e.promptTokens) + "</td>"
+      + "<td class=\"num\">" + (e.completionTokens === null ? "-" : e.completionTokens) + "</td>"
+      + "<td class=\"num\">" + fmtUsd(e.estimatedCostUsd) + "</td>"
+      + "<td class=\"num\">" + fmtUsd(e.actualCostUsd) + "</td>"
+      + "<td><span class=\"outcome " + outcomeClass(e.outcome) + "\">" + escapeHtml(e.outcome) + "</span>" + (e.simulated ? " <span class=\"tag sim\">simulated</span>" : "") + "</td>"
+      + "<td>" + escapeHtml(e.reason || "") + "</td>"
+      + "</tr>";
+  }).join("");
+  wrap.innerHTML = "<table><thead><tr>"
+    + "<th>Time</th><th>User</th><th>Role</th><th>Model</th>"
+    + "<th class=\"num\">Prompt tok</th><th class=\"num\">Completion tok</th>"
+    + "<th class=\"num\">Est. cost</th><th class=\"num\">Actual cost</th>"
+    + "<th>Outcome</th><th>Reason</th></tr></thead><tbody>" + rows + "</tbody></table>";
+}
+
+function renderAll() {
+  renderMode();
+  renderPolicyForm();
+  renderModelSelect();
+  renderMeters();
+  renderLedger();
+}
+
+function readPolicyForm() {
+  const perCallCapUsd = Math.max(0, Number($("perCallCap").value) || 0);
+  const dailyCapUsd = Math.max(0, Number($("dailyCap").value) || 0);
+  const confirmAboveUsd = Math.max(0, Number($("confirmAbove").value) || 0);
+  const allowlist = $("allowlist").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+  const perUserBudgets = {};
+  $("budgets").value.split(/\r?\n/).forEach(function (line) {
+    const parts = line.split(":");
+    if (parts.length !== 2) return;
+    const user = parts[0].trim();
+    const amount = Number(parts[1].trim());
+    if (user && Number.isFinite(amount) && amount >= 0) perUserBudgets[user] = amount;
+  });
+  return { perCallCapUsd, dailyCapUsd, confirmAboveUsd, allowlist, perUserBudgets };
+}
+
+async function applyPolicy() {
+  const policy = readPolicyForm();
+  try {
+    if (app.serverMode) {
+      const saved = await fetchJson("/api/policy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+      });
+      app.policy = saved;
+    } else {
+      app.policy = policy;
+      saveLocal("otari-guard-policy", app.policy);
+    }
+    $("policyNote").textContent = "Policy applied.";
+    renderMeters();
+  } catch (e) {
+    $("policyNote").textContent = "Could not save the policy: " + e.message;
+  }
+}
+
+function showError(msg) {
+  const box = $("errorBox");
+  box.textContent = msg;
+  box.classList.add("show");
+}
+
+function hideError() {
+  $("errorBox").classList.remove("show");
+  $("errorBox").textContent = "";
+}
+
+function showReply(result) {
+  const reply = $("reply");
+  const meta = [];
+  if (result.simulated) meta.push('<span class="tag sim">simulated</span>');
+  else meta.push('<span class="tag live">live</span>');
+  if (result.fallbackUsed) meta.push('<span class="tag fb">fallback used</span>');
+  const metaHtml = "<div class=\"meta\">" + meta.join("") + "Model: " + escapeHtml(result.modelUsed || result.modelRequested || "")
+    + " | Tokens: " + (result.usage ? result.usage.prompt_tokens + " in, " + result.usage.completion_tokens + " out" : "unknown")
+    + " | Estimated cost: " + fmtUsd(result.estimatedCostUsd)
+    + " | Actual cost: " + fmtUsd(result.actualCostUsd) + "</div>";
+  if (result.decision === "ALLOWED") {
+    reply.innerHTML = escapeHtml(result.reply || "") + metaHtml;
+  } else if (result.decision === "NEEDS_CONFIRMATION") {
+    reply.textContent = "Waiting for confirmation. See the confirmation box above.";
+  } else {
+    reply.innerHTML = "Blocked. " + escapeHtml(result.reason || "") + metaHtml;
+  }
+}
+
+async function runChat(confirmed) {
+  hideError();
+  $("confirmBox").classList.remove("show");
+  const body = {
+    user: $("user").value,
+    role: $("role").value,
+    prompt: $("prompt").value,
+    confirmed: confirmed === true,
+  };
+  const model = $("model").value;
+  if (model) body.model = model;
+  if (!app.serverMode) {
+    body.policy = app.policy;
+    body.state = app.spent;
+  }
+  const btn = $("runBtn");
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  try {
+    const result = await fetchJson("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (result.state) {
+      app.spent = result.state;
+      if (!app.serverMode) saveLocal("otari-guard-state", app.spent);
+    }
+    if (app.serverMode) {
+      try { app.ledger = await fetchJson("/api/ledger"); } catch (e) { /* keep local ledger */ }
+    } else if (result.ledgerEntry) {
+      app.ledger.push(result.ledgerEntry);
+      saveLocal("otari-guard-ledger", app.ledger.slice(-200));
+    }
+    renderMeters();
+    renderLedger();
+    if (result.decision === "NEEDS_CONFIRMATION") {
+      app.pending = body;
+      $("confirmText").textContent = result.reason + " Estimated cost: " + fmtUsd(result.estimatedCostUsd) + ".";
+      $("confirmBox").classList.add("show");
+      showReply(result);
+    } else {
+      app.pending = null;
+      showReply(result);
+      if (result.decision === "BLOCKED" && result.rule === "gatewayError") {
+        showError("The gateway call failed: " + (result.error || result.reason || "unknown error"));
+      }
+    }
+  } catch (e) {
+    showError("Could not reach the guard server: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Run through the guard";
+  }
+}
+
+async function init() {
+  try {
+    const health = await fetchJson("/api/health");
+    app.health = health;
+    app.mode = health.mode || "demo";
+    if (Array.isArray(health.models) && health.models.length) app.models = health.models;
+    if (health.roles) {
+      const roleSel = $("role");
+      roleSel.innerHTML = "";
+      Object.entries(health.roles).forEach(function (kv) {
+        const opt = document.createElement("option");
+        opt.value = kv[0];
+        opt.textContent = kv[1].label || kv[0];
+        roleSel.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    app.mode = "demo";
+  }
+  try {
+    const policy = await fetchJson("/api/policy");
+    app.serverMode = true;
+    app.policy = policy;
+    try { app.ledger = await fetchJson("/api/ledger"); } catch (e) { app.ledger = []; }
+    try { app.spent = await fetchJson("/api/state"); } catch (e) { app.spent = { day: todayStr(), spentTotalUsd: 0, spentByUser: {} }; }
+  } catch (e) {
+    app.serverMode = false;
+    app.policy = loadLocal("otari-guard-policy", defaultPolicy(app.models));
+    app.spent = loadLocal("otari-guard-state", { day: todayStr(), spentTotalUsd: 0, spentByUser: {} });
+    if (!app.spent || app.spent.day !== todayStr()) {
+      app.spent = { day: todayStr(), spentTotalUsd: 0, spentByUser: {} };
+    }
+    app.ledger = loadLocal("otari-guard-ledger", []);
+  }
+  renderAll();
+  $("applyPolicy").addEventListener("click", applyPolicy);
+  $("resetPolicy").addEventListener("click", function () {
+    app.policy = defaultPolicy(app.models);
+    if (app.serverMode) { applyPolicy(); } else { saveLocal("otari-guard-policy", app.policy); }
+    renderPolicyForm();
+    renderMeters();
+  });
+  $("runBtn").addEventListener("click", function () { runChat(false); });
+  $("confirmYes").addEventListener("click", function () { runChat(true); });
+  $("confirmNo").addEventListener("click", function () {
+    $("confirmBox").classList.remove("show");
+    app.pending = null;
+    $("reply").textContent = "Confirmation cancelled. Nothing was called and nothing was spent.";
+  });
+}
+
+init();
+</script>
+</body>
+</html>
