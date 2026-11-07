@@ -27,7 +27,7 @@ Costs are always estimates from the gateway usage block and the price map. The g
 
 ## Try it
 
-Live demo: the demo is deployed on Vercel (free tier). The demo URL is added here once the first Vercel deploy is connected.
+Live demo: https://otari-guard.vercel.app/ (Vercel, free tier). It runs in labelled demo mode with simulated responses until the Otari account behind it is funded.
 
 Local, with a key:
 
